@@ -1,69 +1,121 @@
-import java.util.Scanner;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 public class App {
-    //  지역변수를 빼내서 공유할수 있게 만듬
-    Scanner sc = new Scanner(System.in); //입력 받는거
-    int lastId = 0;
-    WiseSaying[] wiseSayings = new WiseSaying[10];
-    int lastWiseSayingIndex = -1;
 
-    //run함수가 하는게 너무 많아 함수로 따로 빼둠
+    private Scanner sc = new Scanner(System.in);
+    private int lastId = 0;
+    private List<com.back.WiseSaying> wiseSayings = new ArrayList<>();
+
     public void run() {
 
         System.out.println("== 명언 앱 ==");
 
         while (true) {
             System.out.print("명령) ");
-            String cmd = sc.nextLine();
+            String command = sc.nextLine();
 
-            if (cmd.equals("종료")) {
+            Rq rq = new Rq(command);
+            String actionName = rq.getActionName();
+            if (actionName.equals("등록")) {
+                actionWrite();
+
+            } else if (actionName.equals("목록")) {
+                actionList();
+
+            } else if (actionName.startsWith("삭제")) {
+                actionDelete(rq);
+
+            } else if (actionName.startsWith("수정")) {
+                actionModify(rq);
+
+            } else if (actionName.equals("종료")) {
                 break;
-            } else if (cmd.equals("등록")) {
-                actionWrite(); // 명언 등록 함수
-            } else if (cmd.equals("목록")) {
-                actionList(); // 명언 목록 보기 함수
             }
         }
     }
 
-    private void actionList() { // 목록 출력
+    private void actionModify(Rq rq) {
+
+        int id = rq.getParamAsInt("id", -1);
+        com.back.WiseSaying wiseSaying = findByIdOrNull(id);
+
+        if(wiseSaying == null) {
+            System.out.println("%d번 명언은 존재하지 않습니다.".formatted(id));
+            return;
+        }
+
+        System.out.println("명언(기존) : %s".formatted(wiseSaying.getSaying()));
+        System.out.print("명언 : ");
+        String newSaying = sc.nextLine();
+        System.out.println("작가(기존) : %s".formatted(wiseSaying.getAuthor()));
+        System.out.print("작가 : ");
+        String newAuthor = sc.nextLine();
+
+        modify(wiseSaying, newSaying, newAuthor);
+    }
+
+    private void modify(com.back.WiseSaying wiseSaying, String newSaying, String newAuthor) {
+        wiseSaying.setSaying(newSaying);
+        wiseSaying.setAuthor(newAuthor);
+    }
+
+    private void actionDelete(Rq rq) {
+
+        int id = rq.getParamAsInt("id", -1);
+        boolean result = delete(id);
+
+        if (result) {
+            System.out.println("%d번 명언이 삭제되었습니다.".formatted(id));
+        } else {
+            System.out.println("%d번 명언은 존재하지 않습니다.".formatted(id));
+        }
+    }
+
+    private com.back.WiseSaying findByIdOrNull(int id) {
+        return wiseSayings.stream()
+                .filter(w -> w.getId() == id)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean delete(int id) {
+        return wiseSayings.removeIf(w -> w.getId() == id);
+    }
+
+    private void actionList() {
         System.out.println("번호 / 작가 / 명언");
         System.out.println("----------------------");
-        List<WiseSaying> wiseSayingList = findList();
 
-        for(WiseSaying wiseSaying : wiseSayingList) {
-            System.out.printf("%d / %s / %s\n", wiseSaying.id, wiseSaying.author, wiseSaying.content);
+        List<com.back.WiseSaying> wiseSayings = findListDesc();
+
+        for (com.back.WiseSaying wiseSaying : wiseSayings) {
+            System.out.println("%d / %s / %s".formatted(wiseSaying.getId(), wiseSaying.getSaying(), wiseSaying.getAuthor()));
         }
     }
 
-    private List<WiseSaying> findList() {
-
-        List<WiseSaying> wiseSayingList = new ArrayList<>();
-        for (int i = lastWiseSayingIndex; i >= 0; i--) {
-            WiseSaying foundedWiseSaying = wiseSayings[i];
-            wiseSayingList.add(foundedWiseSaying);
-        }
-        return wiseSayingList;
+    private List<com.back.WiseSaying> findListDesc() {
+        return wiseSayings.reversed();
     }
 
-    private void actionWrite() {//명언 등록
+    private void actionWrite() {
         System.out.print("명언 : ");
-        String content = sc.nextLine();
+        String saying = sc.nextLine();
         System.out.print("작가 : ");
         String author = sc.nextLine();
-        write(content, author);
-        System.out.println(lastId + "번 명언이 등록되었습니다.");
+
+        com.back.WiseSaying wiseSaying = write(saying, author);
+
+        System.out.println("%d번 명언이 등록되었습니다.".formatted(wiseSaying.getId()));
     }
 
-    private void write(String content,String author){
-            WiseSaying wiseSaying = new WiseSaying();
+    private com.back.WiseSaying write(String saying, String author) {
 
-            wiseSaying.id = ++lastId;
-            wiseSaying.content = content;
-            wiseSaying.author = author;
+        lastId++;
+        com.back.WiseSaying wiseSaying = new com.back.WiseSaying(lastId, saying, author);
+        wiseSayings.add(wiseSaying);
 
-            wiseSayings[++lastWiseSayingIndex] = wiseSaying;
-        }
+        return wiseSaying;
+    }
 }
